@@ -1,0 +1,38 @@
+{
+  "name": "giallarhorn",
+  "version": "0.0.5",
+  "description": "Modern JavaScript library for Web Audio API with 3D spatial audio, global audio, and OneShot sound management",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "types"
+  ],
+  "keywords": [
+    "audio",
+    "web-audio-api",
+    "spatial-audio",
+    "3d-audio",
+    "sound",
+    "audio-engine"
+  ],
+  "author": "Screaming Root",
+  "license": "MIT",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --format=esm --outfile=dist/index.js --minify --target=es2020 && npm run type-check",
+    "type-check": "tsc --noEmit",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
+  }
+}
