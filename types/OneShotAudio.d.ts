@@ -16,5 +16,5 @@ export declare class OneShotAudio {
   static getPolicy(name: string): import('./common').OneShotPolicy;
   static getActiveCount(name?: string): number;
   static play(name: string, options?: OneShotOptions): OneShotVoice | null;
-  private static _ensureCapacity(policy: import('./common').OneShotPolicy, name: string, trackSet: Set<OneShotVoice>, newPriority: number): boolean;
+  private static _ensureCapacity(policy: import('./common').OneShotPolicy, trackSet: Set<OneShotVoice>, newPriority: number): boolean;
 }

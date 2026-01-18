@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -144,18 +144,18 @@
     <h1>Audio Engine Demo</h1>
 
     <div class="controls">
-      <h2>Глобальное аудио</h2>
-      <button id="playMusic">Играть музыку</button>
-      <button id="pauseMusic">Пауза</button>
-      <button id="stopMusic">Стоп</button>
+      <h2>Global Audio</h2>
+      <button id="playMusic">Play Music</button>
+      <button id="pauseMusic">Pause</button>
+      <button id="stopMusic">Stop</button>
       <input type="range" id="musicVolume" min="0" max="100" value="50">
-      <span>Громкость</span>
+      <span>Volume</span>
     </div>
 
     <div class="controls">
-      <h2>Позиционное аудио</h2>
-      <button id="playPositional">Играть позиционный звук</button>
-      <button id="stopPositional">Стоп</button>
+      <h2>Spatial Audio</h2>
+      <button id="playPositional">Play Spatial Sound</button>
+      <button id="stopPositional">Stop</button>
       <div class="slider-group">
         <label>X: <span id="xValue">0</span></label>
         <input type="range" id="posX" min="-50" max="50" value="0">
@@ -171,28 +171,28 @@
     </div>
 
     <div class="controls">
-      <h2>OneShot аудио</h2>
+      <h2>OneShot Audio</h2>
       <button id="oneShotChicken">OneShot chicken</button>
       <button id="oneShotJump">OneShot jump</button>
     </div>
 
     <div class="controls">
-      <h2>Слушатель</h2>
+      <h2>Listener</h2>
       <div class="slider-group">
-        <label>Мастер громкость: <span id="masterValue">100</span>%</label>
+        <label>Master Volume: <span id="masterValue">100</span>%</label>
         <input type="range" id="masterVolume" min="0" max="100" value="100">
       </div>
     </div>
 
     <div class="info">
-      <h3>Управление:</h3>
+      <h3>Controls:</h3>
       <ul>
-        <li>Глобальное аудио - играет одинаково везде</li>
-        <li>Позиционное аудио - громкость зависит от позиции в пространстве</li>
-        <li>Двигайте слайдеры X, Y, Z чтобы изменить позицию звука</li>
-        <li>Слушатель находится в точке (0, 0, 0)</li>
-        <li><strong>Кроссплатформенная оптимизация</strong> - работает на всех устройствах</li>
-        <li><strong>Переключите вкладку</strong> - звук приостановится, вернитесь - восстановится</li>
+        <li>Global audio - plays the same everywhere</li>
+        <li>Spatial audio - volume depends on position in 3D space</li>
+        <li>Move X, Y, Z sliders to change sound position</li>
+        <li>Listener is at position (0, 0, 0)</li>
+        <li><strong>Cross-platform optimization</strong> - works on all devices</li>
+        <li><strong>Switch tabs</strong> - audio will pause, return to resume</li>
       </ul>
     </div>
   </div>
