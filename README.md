@@ -43,7 +43,7 @@ const spatial = manager.get('sound', {
   refDistance: 20,
   rolloffFactor: 1,
   distanceModel: 'inverse',
-  position: [0, 0, -10]
+  position: { x: 0, y: 0, z: -10 }
 }, true);
 spatial.play();
 spatial.setPosition({ x: 10, y: 0, z: -5 });

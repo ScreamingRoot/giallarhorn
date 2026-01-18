@@ -2,6 +2,27 @@ import { AudioItem } from './AudioItem.js';
 import { SpatialAudio } from './SpatialAudio.js';
 
 /**
+ * @typedef {Object} OneShotSpatialOptions
+ * @property {{x: number, y: number, z: number}} [position] - 3D position
+ * @property {number} [refDistance] - Reference distance
+ * @property {number} [maxDistance] - Maximum distance
+ * @property {number} [rolloffFactor] - Rolloff factor
+ * @property {number} [coneInnerAngle] - Inner cone angle
+ * @property {number} [coneOuterAngle] - Outer cone angle
+ * @property {number} [coneOuterGain] - Outer cone gain
+ */
+
+/**
+ * @typedef {Object} OneShotPolicy
+ * @property {number} [maxVoices] - Maximum voices per track
+ * @property {number} [minInterval] - Minimum interval between same sound (seconds)
+ * @property {number} [priority] - Priority (higher = more important)
+ * @property {string} [stealStrategy] - Steal strategy ('ignore' | 'stealOldest' | 'stealQuietest')
+ * @property {number} [stealFadeMs] - Fade-out duration when stealing (milliseconds)
+ * @property {OneShotSpatialOptions} [spatialDefaults] - Default spatial audio settings
+ */
+
+/**
  * OneShotAudio - system for managing short, one-time sound effects with voice limiting.
  * 
  * This class provides a high-level system for playing sound effects (like footsteps,
@@ -52,6 +73,11 @@ import { SpatialAudio } from './SpatialAudio.js';
  * });
  */
 export class OneShotAudio {
+  /** @type {AudioContext|null} */
+  static context = null;
+  /** @type {import('./AudioManager.js').AudioManager|null} */
+  static manager = null;
+
   /**
    * Initializes the OneShotAudio system.
    * 
@@ -71,7 +97,9 @@ export class OneShotAudio {
    * @param {Object} [config.tracks={}] - Per-track policies (overrides defaultPolicy)
    */
   static init({ audioManager, global = {}, tracks = {} } = {}) {
+    /** @type {import('./AudioManager.js').AudioManager} */
     this.manager = audioManager;
+    /** @type {AudioContext} */
     this.context = audioManager.listener.context;
     this.global = {
       maxGlobalVoices: global.maxGlobalVoices ?? 32,
@@ -97,7 +125,7 @@ export class OneShotAudio {
    * taking precedence. Used internally to determine limits and behavior.
    * 
    * @param {string} name - Track name
-   * @returns {Object} Merged policy object
+   * @returns {OneShotPolicy} Merged policy object
    */
   static getPolicy(name) {
     const p = this.trackPolicies[name] ?? {};
@@ -155,6 +183,7 @@ export class OneShotAudio {
     const buffer = this.manager.buffers[name];
     if (!buffer) return null;
 
+    /** @type {OneShotPolicy} */
     const policy = this.getPolicy(name);
     const now = this.context.currentTime;
     const last = this.lastStartAt.get(name) ?? -Infinity;
@@ -174,19 +203,23 @@ export class OneShotAudio {
 
     let desiredPosition = null;
     if (isSpatial) {
+      /** @type {SpatialAudio} */
+      const spatialNode = node;
+      /** @type {OneShotSpatialOptions} */
       const sd = policy.spatialDefaults || {};
+      /** @type {OneShotSpatialOptions} */
       const sp = options.spatial || {};
-      if (sd.refDistance !== undefined) node.refDistance = sd.refDistance;
-      if (sd.maxDistance !== undefined) node.maxDistance = sd.maxDistance;
-      if (sd.rolloffFactor !== undefined) node.rolloffFactor = sd.rolloffFactor;
+      if (sd.refDistance !== undefined) spatialNode.refDistance = sd.refDistance;
+      if (sd.maxDistance !== undefined) spatialNode.maxDistance = sd.maxDistance;
+      if (sd.rolloffFactor !== undefined) spatialNode.rolloffFactor = sd.rolloffFactor;
       if (sd.coneInnerAngle !== undefined || sd.coneOuterAngle !== undefined || sd.coneOuterGain !== undefined) {
-        node.setDirectionalCone(sd.coneInnerAngle ?? 360, sd.coneOuterAngle ?? 360, sd.coneOuterGain ?? 0);
+        spatialNode.setDirectionalCone(sd.coneInnerAngle ?? 360, sd.coneOuterAngle ?? 360, sd.coneOuterGain ?? 0);
       }
-      if (sp.refDistance !== undefined) node.refDistance = sp.refDistance;
-      if (sp.maxDistance !== undefined) node.maxDistance = sp.maxDistance;
-      if (sp.rolloffFactor !== undefined) node.rolloffFactor = sp.rolloffFactor;
+      if (sp.refDistance !== undefined) spatialNode.refDistance = sp.refDistance;
+      if (sp.maxDistance !== undefined) spatialNode.maxDistance = sp.maxDistance;
+      if (sp.rolloffFactor !== undefined) spatialNode.rolloffFactor = sp.rolloffFactor;
       if (sp.coneInnerAngle !== undefined || sp.coneOuterAngle !== undefined || sp.coneOuterGain !== undefined) {
-        node.setDirectionalCone(sp.coneInnerAngle ?? 360, sp.coneOuterAngle ?? 360, sp.coneOuterGain ?? 0);
+        spatialNode.setDirectionalCone(sp.coneInnerAngle ?? 360, sp.coneOuterAngle ?? 360, sp.coneOuterGain ?? 0);
       }
       if (sp.position) desiredPosition = { x: sp.position.x, y: sp.position.y, z: sp.position.z };
     }
@@ -203,7 +236,11 @@ export class OneShotAudio {
     // Start playback, AudioItem will correctly connect its chain in play()
     node.play();
     // Apply position after start, so SpatialAudio doesn't filter out the call
-    if (desiredPosition && node.setPosition) node.setPosition(desiredPosition);
+    if (desiredPosition && isSpatial) {
+      /** @type {SpatialAudio} */
+      const spatialNode = node;
+      spatialNode.setPosition(desiredPosition);
+    }
     this.lastStartAt.set(name, now);
 
     this.active.add(voice);

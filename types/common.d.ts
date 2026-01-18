@@ -14,7 +14,7 @@ export interface AudioConfig {
   loop?: boolean;
   volume?: number;
   playbackRate?: number;
-  position?: [number, number, number];
+  position?: Position;
   refDistance?: number;
   rolloffFactor?: number;
   distanceModel?: DistanceModelType;

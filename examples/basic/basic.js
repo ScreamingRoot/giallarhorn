@@ -22,7 +22,7 @@ class ExampleApp {
       this.globalAudio = this.createAudio('music', { loop: true, volume: 0.5 });
     }
     if (this.manager.has('walk')) {
-      this.spatialAudio = this.createAudio('walk', { type: 'spatial', loop: true, volume: 1.0, refDistance: 20, rolloffFactor: 1, distanceModel: 'inverse', position: [0, 0, -10] });
+      this.spatialAudio = this.createAudio('walk', { type: 'spatial', loop: true, volume: 1.0, refDistance: 20, rolloffFactor: 1, distanceModel: 'inverse', position: { x: 0, y: 0, z: -10 } });
     }
 
     HORN.OneShotAudio.init({

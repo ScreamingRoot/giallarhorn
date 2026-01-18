@@ -137,7 +137,7 @@ export class AudioManager {
    * @param {number} [config.refDistance] - Reference distance for SpatialAudio
    * @param {number} [config.rolloffFactor] - Attenuation coefficient for SpatialAudio
    * @param {string} [config.distanceModel] - Attenuation model for SpatialAudio ('linear' | 'inverse' | 'exponential')
-   * @param {number[]} [config.position] - Initial position [x, y, z] for SpatialAudio
+   * @param {Object} [config.position] - Initial position {x, y, z} for SpatialAudio
    * @param {boolean} [spatial=false] - Create SpatialAudio instead of AudioItem
    * @returns {AudioItem|SpatialAudio|null} Audio source instance or null if file not found
    * 
@@ -151,7 +151,7 @@ export class AudioManager {
    *   refDistance: 20,
    *   rolloffFactor: 1,
    *   distanceModel: 'inverse',
-   *   position: [0, 0, -10]
+   *   position: { x: 0, y: 0, z: -10 }
    * }, true);
    * spatial.play();
    */
@@ -164,10 +164,12 @@ export class AudioManager {
     if (config.volume !== undefined) audio.volume = config.volume;
     if (config.playbackRate !== undefined) audio.playbackRate = config.playbackRate;
     if (spatial) {
-      if (config.refDistance !== undefined) audio.refDistance = config.refDistance;
-      if (config.rolloffFactor !== undefined) audio.rolloffFactor = config.rolloffFactor;
-      if (config.distanceModel !== undefined) audio.distanceModel = config.distanceModel;
-      if (Array.isArray(config.position)) audio.setPosition(config.position[0], config.position[1], config.position[2]);
+      /** @type {SpatialAudio} */
+      const spatialAudio = audio;
+      if (config.refDistance !== undefined) spatialAudio.refDistance = config.refDistance;
+      if (config.rolloffFactor !== undefined) spatialAudio.rolloffFactor = config.rolloffFactor;
+      if (config.distanceModel !== undefined) spatialAudio.distanceModel = config.distanceModel;
+      if (config.position) spatialAudio.setPosition(config.position);
     }
     return audio;
   }
