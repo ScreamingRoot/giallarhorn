@@ -7,3 +7,4 @@ dist/
 examples/test-app/node_modules/
 examples/test-app/dist/
 examples/test-app/.vite/
+examples/test-app/package-lock.json
