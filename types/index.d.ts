@@ -4,6 +4,5 @@ export * from './AudioLoader';
 export * from './AudioItem';
 export * from './SpatialAudio';
 export * from './AudioListenerController';
-export * from './AudioVisibilityManager';
 export * from './AudioManager';
 export * from './OneShotAudio';

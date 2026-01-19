@@ -1,9 +1,10 @@
 import * as HORN from 'giallarhorn';
+import { AudioResumer } from 'audio-resumer';
 
 class ExampleApp {
   constructor() {
     this.listener = new HORN.AudioListenerController();
-    this.visibilityManager = new HORN.AudioVisibilityManager(this.listener.context);
+    AudioResumer.create(this.listener.context);
     this.manager = new HORN.AudioManager(this.listener);
     this.globalAudio = null;
     this.spatialAudio = null;
