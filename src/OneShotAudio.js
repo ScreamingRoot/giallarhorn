@@ -197,7 +197,7 @@ export class OneShotAudio {
     const node = isSpatial ? new SpatialAudio(this.manager.listener) : new AudioItem(this.manager.listener);
     node.setBuffer(buffer);
 
-    if (options.volume !== undefined) node.volume = options.volume;
+    if (options.volume !== undefined) node.gain.gain.value = options.volume;
     if (options.playbackRate !== undefined) node.setPlaybackRate(options.playbackRate);
     if (options.detune !== undefined) node.setDetune(options.detune);
 
