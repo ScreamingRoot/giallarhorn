@@ -10,7 +10,8 @@ export declare class AudioManager {
 
   constructor(listener: AudioListenerController);
 
-  loadAll(files: string[]): Promise<{ audios: AudioBufferMap }>;
+  loadAll(files: Array<string | { name: string; data: string }>): Promise<{ audios: AudioBufferMap }>;
+  loadBase64(name: string, dataUri: string): Promise<AudioBuffer>;
   has(name: string): boolean;
   get(name: string, config?: AudioConfig, spatial?: boolean): AudioItem | SpatialAudio | null;
 }
