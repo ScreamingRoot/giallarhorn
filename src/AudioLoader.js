@@ -2,118 +2,74 @@ import { AudioContextProvider } from './AudioContextProvider.js';
 
 /**
  * AudioLoader - loader for loading and decoding audio files.
- * 
- * This class handles the low-level process of loading audio files from network
- * or from base64 data URIs and decoding them into AudioBuffer objects that can
- * be used by Web Audio API.
- * 
- * Why it's needed:
- * Web Audio API requires audio data to be decoded into AudioBuffer before use.
- * This class abstracts the process of:
- * 1. Loading audio file via XMLHttpRequest (for URLs) or decoding base64 inline (for data URIs)
- * 2. Receiving binary data as ArrayBuffer
- * 3. Decoding ArrayBuffer into AudioBuffer using AudioContext
- * 
- * Why it's structured this way:
- * - Uses callback-based API (onLoad, onProgress, onError) for flexibility
- * - Uses XMLHttpRequest for URL loading (progress tracking support)
- * - Supports base64 data URIs (data:audio/...;base64,...) without using XMLHttpRequest,
- *   so projects that only use base64 audio never trigger an XMLHttpRequest call
- * - Creates a copy of response buffer before decoding (slice(0)) to avoid
- *   potential issues with reused buffers
- * - Uses AudioContextProvider to get shared context for decoding
- * - Handles both network errors and decoding errors
- * 
- * Note: For URL loading, this loader doesn't check HTTP status codes. A 404
- * response will still trigger onload, but decodeAudioData will fail. Consider
- * adding status check if you need better error handling.
- * 
+ *
+ * Supports two source types:
+ * - **URL strings** — loaded via XMLHttpRequest (with progress tracking).
+ *   The XHR code lives in a separate module (`XhrLoader.js`) and is pulled in
+ *   through a dynamic `import()` only when actually needed, so projects that
+ *   exclusively use base64 data URIs will never have `XMLHttpRequest` in their
+ *   bundle.
+ * - **Base64 data URIs** (`data:audio/...;base64,...`) — decoded directly in
+ *   memory without any network request.
+ *
  * @example
  * const loader = new AudioLoader();
- * 
- * // Load from URL
- * loader.load('music.mp3', 
- *   (buffer) => console.log('Loaded:', buffer),
- *   (event) => console.log('Progress:', event.loaded / event.total),
- *   (error) => console.error('Error:', error)
+ *
+ * // From URL (XhrLoader is loaded on demand)
+ * loader.load('music.mp3',
+ *   (buf) => console.log('Loaded:', buf),
+ *   (evt) => console.log('Progress:', evt.loaded / evt.total),
+ *   (err) => console.error(err)
  * );
- * 
- * // Load from base64 data URI (no XMLHttpRequest used)
- * loader.load('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAA...', 
- *   (buffer) => console.log('Loaded from base64:', buffer),
- *   null,
- *   (error) => console.error('Error:', error)
+ *
+ * // From base64 (no XMLHttpRequest involved at all)
+ * loader.load('data:audio/mp3;base64,SUQzBAAAAAAA...',
+ *   (buf) => console.log('Decoded:', buf)
  * );
  */
 export class AudioLoader {
 
   /**
-   * Checks whether the given source string is a base64 data URI.
-   * 
-   * @param {string} source - URL or data URI string
-   * @returns {boolean} true if the source is a data URI
+   * Returns `true` if `source` is a base64 data URI.
+   *
+   * @param {string} source
+   * @returns {boolean}
    */
   static isBase64(source) {
     return typeof source === 'string' && source.startsWith('data:');
   }
 
   /**
-   * Decodes a base64 data URI string into an ArrayBuffer.
-   * 
-   * Strips the data URI prefix (e.g. "data:audio/mp3;base64,") and converts
-   * the remaining base64 payload into binary data.
-   * 
-   * @param {string} dataUri - A base64-encoded data URI
-   * @returns {ArrayBuffer} The decoded binary data
-   * @throws {Error} If the data URI format is invalid or base64 decoding fails
+   * Converts a base64 data URI into an ArrayBuffer.
+   *
+   * @param {string} dataUri - e.g. `"data:audio/mp3;base64,SUQzBAAA..."`
+   * @returns {ArrayBuffer}
+   * @throws {Error} If the data URI has no base64 payload after the comma.
    */
   static decodeBase64ToArrayBuffer(dataUri) {
     const base64 = dataUri.split(',')[1];
     if (!base64) {
       throw new Error('Invalid data URI: missing base64 payload');
     }
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
     }
     return bytes.buffer;
   }
 
   /**
-   * Loads an audio file from URL or base64 data URI and decodes it into AudioBuffer.
-   * 
-   * - For regular URLs: uses XMLHttpRequest to load the file as ArrayBuffer,
-   *   then decodes it using AudioContext.decodeAudioData(). Supports progress tracking.
-   * - For base64 data URIs (starting with "data:"): decodes the base64 payload
-   *   directly into an ArrayBuffer without any network request. XMLHttpRequest
-   *   is never instantiated in this path.
-   * 
-   * @param {string} source - URL of the audio file or a base64 data URI (e.g. "data:audio/mp3;base64,...")
-   * @param {Function} onLoad - Callback called when audio is successfully decoded. Receives AudioBuffer as argument
-   * @param {Function} [onProgress] - Optional callback for progress updates. Receives ProgressEvent (only used for URL loading)
-   * @param {Function} [onError] - Optional callback for errors. Receives error object. If not provided, errors are logged to console
-   * 
-   * @example
-   * // From URL
-   * loader.load('sound.mp3', 
-   *   (buffer) => {
-   *     console.log('Audio loaded:', buffer.duration, 'seconds');
-   *   },
-   *   (event) => {
-   *     const percent = (event.loaded / event.total) * 100;
-   *     console.log(`Loading: ${percent.toFixed(1)}%`);
-   *   },
-   *   (error) => {
-   *     console.error('Failed to load audio:', error);
-   *   }
-   * );
-   * 
-   * @example
-   * // From base64 (no XMLHttpRequest)
-   * loader.load('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAA...', 
-   *   (buffer) => console.log('Decoded:', buffer.duration, 'seconds')
-   * );
+   * Loads audio from a URL **or** a base64 data URI and decodes it into an
+   * `AudioBuffer`.
+   *
+   * For data URIs the decoding happens synchronously in-process (no XHR).
+   * For regular URLs the XHR module is loaded lazily via dynamic `import()`.
+   *
+   * @param {string}   source      - URL or data URI
+   * @param {Function} onLoad      - `(buffer: AudioBuffer) => void`
+   * @param {Function} [onProgress] - `(event: ProgressEvent) => void` (URL only)
+   * @param {Function} [onError]   - `(error: Error | Event) => void`
    */
   load(source, onLoad, onProgress, onError) {
     const handleError = (e) => {
@@ -129,12 +85,9 @@ export class AudioLoader {
   }
 
   /**
-   * Internal: decodes a base64 data URI into an AudioBuffer.
-   * No XMLHttpRequest is used.
-   * 
-   * @param {string} dataUri - base64 data URI
-   * @param {Function} onLoad - success callback
-   * @param {Function} handleError - error handler
+   * Decodes a base64 data URI into an AudioBuffer.
+   * No network request is made; `XMLHttpRequest` is never referenced.
+   *
    * @private
    */
   _loadBase64(dataUri, onLoad, handleError) {
@@ -152,40 +105,20 @@ export class AudioLoader {
   }
 
   /**
-   * Internal: loads an audio file from URL via XMLHttpRequest.
-   * 
-   * @param {string} url - URL to load
-   * @param {Function} onLoad - success callback
-   * @param {Function} [onProgress] - progress callback
-   * @param {Function} handleError - error handler
+   * Loads audio from a URL via the dynamically-imported `XhrLoader` module.
+   *
+   * Because `XhrLoader.js` is imported with `import()`, bundlers treat it as
+   * a separate chunk / side-effect-free module. If this code path is never
+   * reached (i.e. only base64 is used), the chunk containing
+   * `XMLHttpRequest` is never requested and can be excluded from the build.
+   *
    * @private
    */
   _loadUrl(url, onLoad, onProgress, handleError) {
-    const request = new XMLHttpRequest();
-
-    request.open('GET', url, true);
-    request.responseType = 'arraybuffer';
-
-    request.onprogress = (event) => {
-      if (onProgress) onProgress(event);
-    };
-
-
-    request.onload = () => {
-      try {
-        const bufferCopy = request.response.slice(0);
-        const context = AudioContextProvider.context;
-        context
-          .decodeAudioData(bufferCopy, (audioBuffer) => {
-            onLoad(audioBuffer);
-          })
-          .catch(handleError);
-      } catch (e) {
-        handleError(e);
-      }
-    };
-
-    request.onerror = handleError;
-    request.send();
+    import('./XhrLoader.js')
+      .then(({ xhrLoad }) => {
+        xhrLoad(url, onLoad, onProgress, handleError);
+      })
+      .catch(handleError);
   }
 }
