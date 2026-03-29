@@ -9,7 +9,13 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
+      "require": "./dist/index.js",
       "types": "./types/index.d.ts"
+    },
+    "./loaders/xhr": {
+      "import": "./dist/loaders/xhr.js",
+      "require": "./dist/loaders/xhr.js",
+      "types": "./types/loaders/xhr.d.ts"
     }
   },
   "files": [
@@ -35,7 +41,7 @@
     "url": "https://github.com/ScreamingRoot/giallarhorn/issues"
   },
   "scripts": {
-    "build": "esbuild src/index.js --bundle --format=esm --outfile=dist/index.js --minify --target=es2020 && npm run type-check",
+    "build": "esbuild src/index.js src/loaders/xhr.js --bundle --splitting --format=esm --outdir=dist --outbase=src --minify --target=es2020 && npm run type-check",
     "type-check": "tsc --noEmit",
     "prepare": "npm run build"
   },

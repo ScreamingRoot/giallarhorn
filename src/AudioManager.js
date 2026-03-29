@@ -3,54 +3,30 @@ import { AudioItem } from './AudioItem.js';
 import { SpatialAudio } from './SpatialAudio.js';
 
 /**
- * AudioManager - manager for loading and managing audio resources.
+ * AudioManager — high-level manager for loading and playing audio.
  *
- * This class provides a high-level API for working with audio:
- * - Loading audio files from network or base64 data URIs
- * - Storing decoded AudioBuffers in memory
- * - Creating ready-to-use AudioItem and SpatialAudio instances
- *
- * Why it's needed:
- * Web Audio API requires decoding audio files into AudioBuffer before use.
- * AudioManager simplifies this process:
- * 1. Loads files asynchronously via AudioLoader
- * 2. Automatically extracts filename from URL and uses it as a key
- * 3. Stores buffers in memory for reuse
- * 4. Creates ready instances of AudioItem/SpatialAudio with settings
- *
- * Why it's structured this way:
- * - Uses AudioLoader for loading abstraction (can be replaced with another loader)
- * - Stores buffers in an object for fast access by name
- * - Automatically determines filename from URL (removes extension)
- * - Supports both relative and absolute URLs
- * - Supports base64 data URIs (no XMLHttpRequest involved)
- * - get() method creates a new instance each time (not singleton), allowing
- *   the same sound to be played multiple times simultaneously
+ * Works with both base64 data URIs (out of the box) and regular URLs
+ * (when a URL loader plugin is registered).
  *
  * @example
- * const listener = new AudioListenerController();
+ * // ── Base64 only (Playable Ad) ──
  * const manager = new AudioManager(listener);
- *
- * // Loading from URLs
- * await manager.loadAll(['music.mp3', 'sound.mp3']);
- *
- * // Loading from base64
  * await manager.loadAll([
- *   { name: 'click', data: 'data:audio/mp3;base64,SUQzBAAA...' },
+ *   { name: 'click', data: 'data:audio/mp3;base64,…' },
  * ]);
  *
- * // Single base64
- * await manager.loadBase64('beep', 'data:audio/wav;base64,UklGRiQA...');
+ * @example
+ * // ── URLs (regular project) ──
+ * import { XhrLoader } from 'giallarhorn/loaders/xhr';
  *
- * // Creating and playing
- * const music = manager.get('music', { loop: true, volume: 0.5 });
- * music.play();
+ * const manager = new AudioManager(listener);
+ * manager.registerLoader('url', new XhrLoader());
+ * await manager.loadAll(['music.mp3', 'sound.mp3']);
  */
 export class AudioManager {
+
   /**
-   * Creates a new AudioManager.
-   *
-   * @param {AudioListenerController} listener - AudioListenerController instance for creating audio sources
+   * @param {AudioListenerController} listener
    */
   constructor(listener) {
     this.listener = listener;
@@ -58,13 +34,31 @@ export class AudioManager {
     this.buffers = {};
   }
 
+  // ── loader plugin delegation ─────────────────────────────────────────
+
+  /**
+   * Registers a loader plugin on the internal `AudioLoader`.
+   *
+   * @param {string} scheme - e.g. `'url'`
+   * @param {{ load: Function }} loaderInstance - e.g. `new XhrLoader()`
+   *
+   * @example
+   * import { XhrLoader } from 'giallarhorn/loaders/xhr';
+   * manager.registerLoader('url', new XhrLoader());
+   */
+  registerLoader(scheme, loaderInstance) {
+    this.loader.registerLoader(scheme, loaderInstance);
+  }
+
+  // ── loading ──────────────────────────────────────────────────────────
+
   /**
    * Loads an array of audio sources and decodes them into AudioBuffers.
    *
    * Each entry can be:
-   * - A URL string (`"music.mp3"`) — loaded via network, name extracted from URL
-   * - A data URI string (`"data:audio/mp3;base64,..."`) — decoded inline, auto-named `"audio_0"`, `"audio_1"`, …
-   * - An object `{ name, data }` — data URI decoded inline under the given name
+   * - A URL string (`"music.mp3"`) — requires a registered `'url'` loader
+   * - A data URI string (`"data:audio/…;base64,…"`) — auto-named `"audio_0"`, …
+   * - An object `{ name, data }` — data URI stored under the given name
    *
    * @param {Array<string | { name: string, data: string }>} files
    * @returns {Promise<{ audios: Object }>}
@@ -80,11 +74,11 @@ export class AudioManager {
   }
 
   /**
-   * Loads a single audio from a base64 data URI and stores it under the given name.
-   * Does NOT use XMLHttpRequest.
+   * Loads a single base64 data URI and stores it under `name`.
+   * Does NOT touch XMLHttpRequest.
    *
-   * @param {string} name    - Key for the decoded buffer
-   * @param {string} dataUri - `"data:audio/...;base64,..."`
+   * @param {string} name
+   * @param {string} dataUri
    * @returns {Promise<AudioBuffer>}
    */
   async loadBase64(name, dataUri) {
@@ -95,10 +89,7 @@ export class AudioManager {
 
   // ── private helpers ──────────────────────────────────────────────────
 
-  /**
-   * Resolves a single `loadAll` entry into `{ name, buffer }`.
-   * @private
-   */
+  /** @private */
   async _loadEntry(entry, index) {
     if (typeof entry === 'object' && entry !== null && entry.name && entry.data) {
       const buffer = await this._promisifyLoad(entry.data);
@@ -116,25 +107,14 @@ export class AudioManager {
     return { name: this._extractNameFromUrl(source), buffer };
   }
 
-  /**
-   * Wraps callback-based `loader.load()` into a Promise.
-   * @private
-   */
+  /** @private */
   _promisifyLoad(source) {
     return new Promise((resolve, reject) => {
       this.loader.load(source, resolve, null, reject);
     });
   }
 
-  /**
-   * Extracts a short name (without extension) from a URL.
-   *
-   * - `"music.mp3"` → `"music"`
-   * - `"/sounds/jump.mp3"` → `"jump"`
-   * - `"https://example.com/audio.wav?v=1"` → `"audio"`
-   *
-   * @private
-   */
+  /** @private */
   _extractNameFromUrl(url) {
     try {
       const u = new URL(url, window.location.href);
@@ -149,8 +129,6 @@ export class AudioManager {
   // ── public query / factory ───────────────────────────────────────────
 
   /**
-   * Checks if an audio file with the specified name is loaded.
-   *
    * @param {string} name
    * @returns {boolean}
    */
@@ -159,11 +137,9 @@ export class AudioManager {
   }
 
   /**
-   * Creates and returns a ready-to-use AudioItem or SpatialAudio instance.
-   *
-   * @param {string}  name              - Name of loaded audio
-   * @param {Object}  [config={}]       - Configuration
-   * @param {boolean} [spatial=false]   - Create SpatialAudio instead of AudioItem
+   * @param {string}  name
+   * @param {Object}  [config={}]
+   * @param {boolean} [spatial=false]
    * @returns {AudioItem|SpatialAudio|null}
    */
   get(name, config = {}, spatial = false) {
