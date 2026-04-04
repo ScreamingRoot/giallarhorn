@@ -1,32 +1,43 @@
 import { AudioContextProvider } from './AudioContextProvider.js';
 
 /**
- * AudioLoader — loads and decodes audio from base64 data URIs (built-in)
- * or from URLs (requires an explicitly registered loader plugin).
+ * AudioLoader - loader for loading and decoding audio files.
  *
- * Base64 data URIs are decoded directly in-memory — no network request,
- * no `XMLHttpRequest`, nothing extra to import.
+ * This class handles the low-level process of loading audio files
+ * and decoding them into AudioBuffer objects that can be used by Web Audio API.
  *
- * For URL-based loading you must register a loader that knows how to fetch
- * binary data. The library ships `XhrLoader` as a separate entry-point
- * (`giallarhorn/loaders/xhr`). Because it lives in its own module, bundlers
- * will only include `XMLHttpRequest` when that module is actually imported.
+ * Why it's needed:
+ * Web Audio API requires audio data to be decoded into AudioBuffer before use.
+ * This class abstracts the process of:
+ * 1. Loading audio file via a registered loader plugin (e.g. XhrLoader for URLs)
+ * 2. Decoding base64 data URIs directly in-memory (built-in, no plugin needed)
+ * 3. Decoding ArrayBuffer into AudioBuffer using AudioContext
+ *
+ * Why it's structured this way:
+ * - Uses callback-based API (onLoad, onProgress, onError) for flexibility
+ * - URL loading is handled by external loader plugins registered via registerLoader()
+ * - XhrLoader (giallarhorn/loaders/xhr) is shipped separately so projects that
+ *   only use base64 never include XMLHttpRequest in their bundle
+ * - Base64 data URIs are decoded in-memory without any network request
+ * - Uses AudioContextProvider to get shared context for decoding
+ * - Handles both network errors and decoding errors
  *
  * @example
- * // ── Playable Ad (base64 only, no XHR in the bundle) ──
- * import { AudioLoader } from 'giallarhorn';
- *
  * const loader = new AudioLoader();
- * loader.load('data:audio/mp3;base64,SUQzBAAA…', (buf) => { … });
  *
- * @example
- * // ── Regular project (needs URL loading) ──
- * import { AudioLoader } from 'giallarhorn';
- * import { XhrLoader }   from 'giallarhorn/loaders/xhr';
+ * // Base64 (works out of the box, no plugins)
+ * loader.load('data:audio/mp3;base64,SUQzBAAA...',
+ *   (buffer) => console.log('Loaded:', buffer)
+ * );
  *
- * const loader = new AudioLoader();
+ * // URL (requires registered loader)
+ * import { XhrLoader } from 'giallarhorn/loaders/xhr';
  * loader.registerLoader('url', new XhrLoader());
- * loader.load('music.mp3', (buf) => { … });
+ * loader.load('music.mp3',
+ *   (buffer) => console.log('Loaded:', buffer),
+ *   (event) => console.log('Progress:', event.loaded / event.total),
+ *   (error) => console.error('Error:', error)
+ * );
  */
 export class AudioLoader {
 
@@ -35,10 +46,8 @@ export class AudioLoader {
     this._loaders = {};
   }
 
-  // ── static helpers ───────────────────────────────────────────────────
-
   /**
-   * Returns `true` if `source` is a base64 data URI.
+   * Returns true if source is a base64 data URI.
    * @param {string} source
    * @returns {boolean}
    */
@@ -64,49 +73,28 @@ export class AudioLoader {
     return bytes.buffer;
   }
 
-  // ── plugin registry ──────────────────────────────────────────────────
-
   /**
    * Registers an external loader plugin for a given scheme.
+   * The loader must expose a load(url, onLoad, onProgress, onError) method.
    *
-   * The loader must expose a `load(url, onLoad, onProgress, onError)` method
-   * with the same callback signature used by `AudioLoader.load()`.
-   *
-   * @param {string} scheme - Key that identifies the loader (e.g. `'url'`)
-   * @param {{ load: Function }} loader - Loader instance (e.g. `new XhrLoader()`)
-   *
-   * @example
-   * import { XhrLoader } from 'giallarhorn/loaders/xhr';
-   * audioLoader.registerLoader('url', new XhrLoader());
+   * @param {string} scheme - Key that identifies the loader (e.g. 'url')
+   * @param {{ load: Function }} loader - Loader instance (e.g. new XhrLoader())
    */
   registerLoader(scheme, loader) {
     this._loaders[scheme] = loader;
   }
 
   /**
-   * Returns the loader registered under `scheme`, or `undefined`.
-   * @param {string} scheme
-   * @returns {{ load: Function } | undefined}
-   */
-  getLoader(scheme) {
-    return this._loaders[scheme];
-  }
-
-  // ── main API ─────────────────────────────────────────────────────────
-
-  /**
-   * Loads audio from a URL **or** base64 data URI and decodes it into an
-   * `AudioBuffer`.
+   * Loads an audio file from URL or base64 data URI and decodes it into AudioBuffer.
    *
-   * - Data URIs → decoded in-memory (always works, no plugins needed).
-   * - URLs → delegated to the `'url'` loader registered via
-   *   `registerLoader()`. If no loader is registered a descriptive error
-   *   is thrown so the developer knows what to import.
+   * - Base64 data URIs are decoded directly in-memory (no plugins needed).
+   * - URLs are delegated to the 'url' loader registered via registerLoader().
+   *   If no loader is registered, a descriptive error is emitted.
    *
-   * @param {string}   source
-   * @param {Function} onLoad
-   * @param {Function} [onProgress]
-   * @param {Function} [onError]
+   * @param {string} source - URL of the audio file or a base64 data URI
+   * @param {Function} onLoad - Callback called when audio is successfully decoded. Receives AudioBuffer as argument
+   * @param {Function} [onProgress] - Optional callback for progress updates. Receives ProgressEvent (URL only)
+   * @param {Function} [onError] - Optional callback for errors. Receives error object. If not provided, errors are logged to console
    */
   load(source, onLoad, onProgress, onError) {
     const handleError = (e) => {
@@ -119,21 +107,15 @@ export class AudioLoader {
     } else {
       const urlLoader = this._loaders['url'];
       if (!urlLoader) {
-        handleError(
-          new Error(
-            'No loader registered for URL sources. ' +
-            'Import and register XhrLoader:\n\n' +
-            "  import { XhrLoader } from 'giallarhorn/loaders/xhr';\n" +
-            "  audioLoader.registerLoader('url', new XhrLoader());\n"
-          )
-        );
+        handleError(new Error(
+          'No loader registered for URL sources. ' +
+          "Import and register XhrLoader: audioLoader.registerLoader('url', new XhrLoader())"
+        ));
         return;
       }
       urlLoader.load(source, onLoad, onProgress, handleError);
     }
   }
-
-  // ── private ──────────────────────────────────────────────────────────
 
   /** @private */
   _loadBase64(dataUri, onLoad, handleError) {

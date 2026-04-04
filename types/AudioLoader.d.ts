@@ -7,7 +7,6 @@ export declare class AudioLoader {
   static decodeBase64ToArrayBuffer(dataUri: string): ArrayBuffer;
 
   registerLoader(scheme: string, loader: SourceLoader): void;
-  getLoader(scheme: string): SourceLoader | undefined;
 
   load(
     source: string,

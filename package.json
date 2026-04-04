@@ -9,12 +9,10 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.js",
       "types": "./types/index.d.ts"
     },
     "./loaders/xhr": {
       "import": "./dist/loaders/xhr.js",
-      "require": "./dist/loaders/xhr.js",
       "types": "./types/loaders/xhr.d.ts"
     }
   },

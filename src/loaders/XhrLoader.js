@@ -1,11 +1,11 @@
 import { AudioContextProvider } from '../AudioContextProvider.js';
 
 /**
- * XhrLoader — URL loader that uses XMLHttpRequest.
+ * XhrLoader - URL loader that uses XMLHttpRequest.
  *
- * This class is shipped as a **separate entry-point** (`giallarhorn/loaders/xhr`)
- * so that projects which only work with base64 data URIs can simply NOT import
- * it, and the bundler will never include `XMLHttpRequest` in the output.
+ * Shipped as a separate entry-point (giallarhorn/loaders/xhr) so that projects
+ * which only use base64 data URIs can skip this import entirely, keeping
+ * XMLHttpRequest out of their bundle.
  *
  * @example
  * import { AudioLoader } from 'giallarhorn';
@@ -13,19 +13,17 @@ import { AudioContextProvider } from '../AudioContextProvider.js';
  *
  * const loader = new AudioLoader();
  * loader.registerLoader('url', new XhrLoader());
- *
  * loader.load('music.mp3', (buf) => console.log(buf));
  */
 export class XhrLoader {
-
   /**
    * Loads an audio file from a URL via XMLHttpRequest and decodes it
-   * into an AudioBuffer through `AudioContext.decodeAudioData()`.
+   * into an AudioBuffer through AudioContext.decodeAudioData().
    *
-   * @param {string}   url         - URL to fetch
-   * @param {Function} onLoad      - `(buffer: AudioBuffer) => void`
-   * @param {Function} [onProgress] - `(event: ProgressEvent) => void`
-   * @param {Function} onError     - `(error: Error | Event) => void`
+   * @param {string} url - URL to fetch
+   * @param {Function} onLoad - Called with the decoded AudioBuffer on success
+   * @param {Function} [onProgress] - Called with ProgressEvent during download
+   * @param {Function} onError - Called on network or decoding errors
    */
   load(url, onLoad, onProgress, onError) {
     const request = new XMLHttpRequest();
