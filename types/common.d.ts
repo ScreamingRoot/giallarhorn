@@ -80,6 +80,19 @@ export interface OneShotVoice {
 
 export type AudioBufferMap = Record<string, AudioBuffer>;
 
+/**
+ * Interface that URL-loader plugins must implement.
+ * Register an instance via `AudioLoader.registerLoader('url', loader)`.
+ */
+export interface SourceLoader {
+  load(
+    url: string,
+    onLoad: (buffer: AudioBuffer) => void,
+    onProgress: ((event: ProgressEvent) => void) | null,
+    onError: (error: Error | Event) => void
+  ): void;
+}
+
 export type SourceType = 'empty' | 'buffer' | 'audioNode' | 'mediaNode' | 'mediaStreamNode';
 
 export type DistanceModelType = 'linear' | 'inverse' | 'exponential';

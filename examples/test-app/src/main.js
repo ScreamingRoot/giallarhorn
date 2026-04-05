@@ -1,4 +1,5 @@
 import * as HORN from 'giallarhorn';
+import { XhrLoader } from 'giallarhorn/loaders/xhr';
 import { AudioResumer } from 'audio-resumer';
 
 class ExampleApp {
@@ -6,6 +7,7 @@ class ExampleApp {
     this.listener = new HORN.AudioListenerController();
     AudioResumer.create(this.listener.context);
     this.manager = new HORN.AudioManager(this.listener);
+    this.manager.registerLoader('url', new XhrLoader());
     this.globalAudio = null;
     this.spatialAudio = null;
 
