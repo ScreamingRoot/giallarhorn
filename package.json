@@ -39,7 +39,7 @@
     "url": "https://github.com/ScreamingRoot/giallarhorn/issues"
   },
   "scripts": {
-    "build": "esbuild src/index.js src/loaders/xhr.js --bundle --splitting --format=esm --outdir=dist --outbase=src --minify --target=es2020 && npm run type-check",
+    "build": "esbuild src/index.js --bundle --format=esm --outfile=dist/index.js --minify --target=es2020 && esbuild src/loaders/xhr.js --bundle --format=esm --outfile=dist/loaders/xhr.js --minify --target=es2020 && npm run type-check",
     "type-check": "tsc --noEmit",
     "prepare": "npm run build"
   },
